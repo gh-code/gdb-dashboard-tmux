@@ -15,6 +15,11 @@ if [ "$#" -lt "1" ]; then
     exit 1
 fi
 
+if [ ! -z "$TMUX" ]; then
+    echo "Error: you are already inside a tmux session"
+    exit 1
+fi
+
 if [ ! -f ${gdb_dashboard_file} ]; then
     wget -O ${gdb_dashboard_file} git.io/.gdbinit
 fi
@@ -30,27 +35,32 @@ cat ${gdb_dashboard_file} > ${gdb_source_file}
 
 tmux new-session -d -s ${session}
 
-tmux splitw -h -t 0 -p 15 # 1:right
-tmux splitw -v -t 0 -p 15 # 2:bottom(-left)
-tmux splitw -h -t 0 -p 70 # 3:middle
-tmux splitw -v -t 0 -p 50 # 4:left-middle
+w=1
 
-tmux splitw -h -t 2 -p 50 # 5:bottom-right
+tmux new-window -t ${session} -n 'gdb'
+tmux select-window -t ${session}:$w
 
-tmux send-keys -t 1 "echo dashboard registers -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 2 "echo dashboard memory -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 3 "echo dashboard source -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 3 "echo dashboard assembly -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 4 "echo dashboard stack -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 4 "echo dashboard history -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 5 "echo dashboard threads -output \`tty\` >> ${gdb_source_file}" C-m
-tmux send-keys -t 5 "echo dashboard expressions -output \`tty\` >> ${gdb_source_file}" C-m
+tmux splitw -h -t ${session}:$w.0 -p 15 # 1:right
+tmux splitw -v -t ${session}:$w.0 -p 15 # 2:bottom(-left)
+tmux splitw -h -t ${session}:$w.0 -p 70 # 3:middle
+tmux splitw -v -t ${session}:$w.0 -p 50 # 4:left-middle
+
+tmux splitw -h -t ${session}:$w.2 -p 50 # 5:bottom-right
+
+tmux send-keys -t ${session}:$w.1 "echo dashboard registers -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.2 "echo dashboard memory -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.3 "echo dashboard source -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.3 "echo dashboard assembly -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.4 "echo dashboard stack -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.4 "echo dashboard history -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.5 "echo dashboard threads -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t ${session}:$w.5 "echo dashboard expressions -output \`tty\` >> ${gdb_source_file}" C-m
 
 for i in $(seq 1 5); do
-    tmux send-keys -t $i "clear" C-m
+    tmux send-keys -t ${session}:$w.$i "clear" C-m
 done
 
-tmux selectp -t 0
+tmux selectp -t ${session}:$w.0
 tmux send-keys "gdb -x ${gdb_source_file} ${command}; rm -f ${gdb_source_file}; tmux kill-session -t ${session}" C-m
 
 tmux attach-session -t ${session}
