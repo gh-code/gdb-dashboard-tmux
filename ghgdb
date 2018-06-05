@@ -4,7 +4,7 @@
 RANDOM_ID=`date | md5sum | head -c 8`
 
 gdb_dashboard_file="/tmp/`whoami`.gdb-dashboard"
-gdb_source_file="/tmp/mygdb_${RANDOM_ID}"
+gdb_source_file="/tmp/ghgdb_${RANDOM_ID}"
 
 session="work_${RANDOM_ID}"
 command="$@"
@@ -18,6 +18,13 @@ fi
 if [ ! -f ${gdb_dashboard_file} ]; then
     wget -O ${gdb_dashboard_file} git.io/.gdbinit
 fi
+
+i=1
+while [ -f ${gdb_source_file} ]; do
+    gdb_source_file="${gdb_source_file%.*}.$i"
+    session="${session}$i"
+    i=$((i + 1))
+done
 
 cat ${gdb_dashboard_file} > ${gdb_source_file}
 
@@ -44,6 +51,6 @@ for i in $(seq 1 5); do
 done
 
 tmux selectp -t 0
-tmux send-keys "gdb -x ${gdb_source_file} ${command}; tmux kill-session -t ${session}; rm -f ${gdb_source_file}" C-m
+tmux send-keys "gdb -x ${gdb_source_file} ${command}; rm -f ${gdb_source_file}; tmux kill-session -t ${session}" C-m
 
 tmux attach-session -t ${session}
