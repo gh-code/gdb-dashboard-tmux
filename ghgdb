@@ -1,0 +1,49 @@
+#!/bin/sh
+# Author: Gary Huang <gh.nctu+code@gmail.com>
+
+RANDOM_ID=`date | md5sum | head -c 8`
+
+gdb_dashboard_file="/tmp/`whoami`.gdb-dashboard"
+gdb_source_file="/tmp/mygdb_${RANDOM_ID}"
+
+session="work_${RANDOM_ID}"
+command="$@"
+
+if [ "$#" -lt "1" ]; then
+    echo "$0 [--args] exec [arg1 ...]"
+    echo
+    exit 1
+fi
+
+if [ ! -f ${gdb_dashboard_file} ]; then
+    wget -O ${gdb_dashboard_file} git.io/.gdbinit
+fi
+
+cat ${gdb_dashboard_file} > ${gdb_source_file}
+
+tmux new-session -d -s ${session}
+
+tmux splitw -h -t 0 -p 15 # 1:right
+tmux splitw -v -t 0 -p 15 # 2:bottom(-left)
+tmux splitw -h -t 0 -p 70 # 3:middle
+tmux splitw -v -t 0 -p 50 # 4:left-middle
+
+tmux splitw -h -t 2 -p 50 # 5:bottom-right
+
+tmux send-keys -t 1 "echo dashboard registers -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 2 "echo dashboard memory -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 3 "echo dashboard source -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 3 "echo dashboard assembly -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 4 "echo dashboard stack -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 4 "echo dashboard history -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 5 "echo dashboard threads -output \`tty\` >> ${gdb_source_file}" C-m
+tmux send-keys -t 5 "echo dashboard expressions -output \`tty\` >> ${gdb_source_file}" C-m
+
+for i in $(seq 1 5); do
+    tmux send-keys -t $i "clear" C-m
+done
+
+tmux selectp -t 0
+tmux send-keys "gdb -x ${gdb_source_file} ${command}; tmux kill-session -t ${session}; rm -f ${gdb_source_file}" C-m
+
+tmux attach-session -t ${session}
